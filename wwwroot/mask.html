@@ -1,0 +1,321 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+
+<head>
+
+
+<title>触摸屏拖动图片</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+
+  <style type="text/css">
+  </style>
+</head>
+<body >
+  
+<canvas id="myCanvas" width="300" height="350" style="border:1px solid #d3d3d3;">
+</canvas>
+<canvas id="tempCanvas" width="1000" height="1000" style="display:none;">
+</canvas>
+ </body>
+  <script type="text/javascript">
+  var surface=[];
+surface[0]={};
+surface[0].animation=[];
+surface[0].animation[0]={};
+surface[0].animation[0].interval="never";
+surface[0].animation[0].pattern=[
+{
+	"method":"overlay",
+	"surfaceId":10,
+	"wait":5*10,
+	"pointX":10,
+	"pointY":10
+},
+{
+	"method":"overlay",
+	"surfaceId":-1,
+	"wait":5*10,
+	"pointX":10,
+	"pointY":10
+}
+];
+//draw("myCanvas","surface0000");
+/*
+function Shell(canvasId,path)
+{
+    this.canvas=document.getElementById(canvasId);
+    if (this.canvas == null)
+        return null;
+    this.context = this.canvas.getContext("2d");
+    this.shellpath=path;
+    var loadImage=function(context,imagePath,imageFun)
+    {
+        var pointX=0;
+        var pointY=0;
+        var image = new Image();
+        image.src = imagePath;
+        image.onload = function () {
+            context.drawImage(image, pointX, pointY);
+            var imagedata = context.getImageData(pointX, pointY, image.width, image.height);
+            imageFun(image,imagedata);
+        }
+    }
+    this.draw = function(surfaceName)
+    {
+        var pointX=0;
+        var pointY=0;
+        var masterpath=this.shellpath;
+        var context=this.context;
+        loadImage(context,masterpath+surfaceName+".png",function(image,imagedata){
+            loadImage(context,masterpath+surfaceName+".pna",function(mask,maskdata){
+                for (var i = 0, n = imagedata.data.length,m=maskdata.data.length; i < n&&i<m; i += 4) {
+                    imagedata.data[i + 3]= (maskdata.data[i + 0]+maskdata.data[i + 1]+maskdata.data[i + 2])/3;
+                }
+                context.putImageData(imagedata, pointX, pointY);
+            });
+        });
+    };
+    this.play=function(method,surfaceName,wait,pointX,pointY)
+    {
+        var masterpath=this.shellpath;
+        var context=this.context;
+        loadImage(context,masterpath+surfaceName+".png",function(image,imagedata){
+            var pos0r=imagedata.data[0];
+            var pos0g=imagedata.data[1];
+            var pos0b=imagedata.data[2];
+            for (var i = 0, n = imagedata.data.length; i < n; i += 4) {
+                if(imagedata.data[i + 0]==pos0r && imagedata.data[i + 1]==pos0g && imagedata.data[i + 2]==pos0b)
+                {
+                    imagedata.data[i + 3]= 0;
+                }
+            }
+            context.putImageData(imagedata, pointX, pointY);
+        });
+    }
+}
+var shell=new Shell("myCanvas","/master/");
+shell.draw("surface0000");
+shell.play("overlay","surface1001",5*10,110,50);
+//draw("myCanvas","surface0010");
+*/
+
+function ShellManger(imgFilePath,imgFileList,callback)
+{
+    var undoNum=imgFileList.length;
+    var shellList=[];
+    for(var i=0;i<imgFileList.length;i++)
+    {
+        shellList.push({
+            name:imgFileList[i],
+            status:0
+        });
+    }
+    var surfaceImages=[];
+    var timeout=1000;
+    var loadTimer=setInterval(function(){
+        //console.log(new Date());
+        if(undoNum==0)
+        {
+            clearInterval(loadTimer);
+            var tempImages=[];
+            for(var i=0;i<shellList.length;i++)
+            {
+                if(shellList[i].status==1)
+                {
+                    var name=shellList[i].name;
+                    var ispna=false;
+                    var reg=/^surface(\d+)\.png$/.exec(name)
+                    if(!reg)
+                    {
+                        reg=/^surface(\d+)\.pna$/.exec(name)
+                        if(reg)
+                        {
+                            ispna=true;
+                        }
+                    }
+                    if(reg)
+                    {
+                        var index=parseInt(reg[1]);
+                        if(index!=NaN)
+                        {
+                            if(!tempImages[index])
+                            {
+                                tempImages[index]={};
+                            }
+                            if(ispna)
+                            {
+                                tempImages[index].pnaImage=shellList[i];
+                            }
+                            else
+                            {
+                                tempImages[index].pngImage=shellList[i];
+                            }
+                        }
+                    }
+                }
+            }
+            for(var i=0;i<tempImages.length;i++)
+            {
+                if(tempImages[i])
+                {
+                    if(tempImages[i].pngImage)
+                    {
+                        var imageWidth=tempImages[i].pngImage.imageWidth;
+                        var imageHeight=tempImages[i].pngImage.imageHeight;
+                        var imagedata=tempImages[i].pngImage.imageData;
+                        if(tempImages[i].pnaImage)
+                        {
+                            var maskdata=tempImages[i].pnaImage.imageData;
+                            for (var j = 0, n = imagedata.data.length,m=maskdata.data.length; j < n&&j<m; j += 4) {
+                                imagedata.data[j + 3]= (maskdata.data[j + 0]+maskdata.data[j + 1]+maskdata.data[j + 2])/3;
+                            }
+                        }
+                        else
+                        {
+                            var pos0r=imagedata.data[0];
+                            var pos0g=imagedata.data[1];
+                            var pos0b=imagedata.data[2];
+                            for (var j = 0, n = imagedata.data.length; j < n; j += 4) {
+                                if(imagedata.data[j + 0]==pos0r && imagedata.data[j + 1]==pos0g && imagedata.data[j + 2]==pos0b)
+                                {
+                                    imagedata.data[j + 3]= 0;
+                                }
+                            }
+                        }
+                        surfaceImages[i]={
+                            imageData:imagedata,
+                            imageWidth:imageWidth,
+                            imageHeight:imageHeight
+                        };
+                    }
+                }
+            }
+            callback(surfaceImages);
+        }
+    },timeout);
+
+    var canvas=document.getElementById("tempCanvas");
+    var context = canvas.getContext("2d");
+    for(var i=0;i<shellList.length;i++)
+    {
+        (function(shellImage){
+            var image = new Image();
+            image.onload = function () {
+                context.drawImage(image, 0, 0);
+                shellImage.imageData = context.getImageData(0, 0, image.width, image.height);
+                shellImage.imageWidth=image.width;
+                shellImage.imageHeight=image.height;
+                shellImage.status=1;
+                context.height=image.height;  
+                context.width=image.width;  
+                undoNum-=1;
+            };
+            image.onerror = function () { 
+                undoNum-=1;
+            };
+            image.onabort = function () { 
+                undoNum-=1;
+            };
+            image.src = imgFilePath+shellImage.name;
+        })(shellList[i]);
+    }
+}
+
+
+var imgFilePath="/shell/";
+var imgFileList=["surface0.png","surface0.pna",
+"surface10.png","surface10.png"];
+ShellManger(imgFilePath,imgFileList,function(surfaceImages)
+{
+    var canvas=document.getElementById("myCanvas");
+    var context = canvas.getContext("2d");
+
+    function drawBase(newlayer)
+    {
+        return newlayer;
+    }
+    function drawOverlay(baselayer, newlayer,x,y)
+    {
+        var width=baselayer.width>(x+newlayer.width)?baselayer.width:(x+newlayer.width);
+        var height=baselayer.height>(y+newlayer.height)?baselayer.height:(y+newlayer.height);
+        var imgData=context.createImageData(width,height);
+        for(var i=0;i<width;i++)
+        {
+            for(var j=0;j<height;j++)
+            {
+                ;
+            }
+        }
+
+    }
+
+    if(surfaceImages[0])
+    {
+        context.putImageData(surfaceImages[0].imageData, 0, 0);
+        function play(animationID)
+        {
+            var timer;
+            var interval=surface[0].animation[animationID].interval;
+            var pattern=surface[0].animation[animationID].pattern;
+            var fram=0;
+            var playupdate=function()
+            {
+                if(fram<pattern.length)
+                {
+                    var patternItem=pattern[fram];
+                    var surfaceId=patternItem.surfaceId;
+                    var pointX=patternItem.pointX;
+                    var pointY=patternItem.pointY;
+                    var wait=patternItem.wait;
+                    timer=setTimeout(function(){
+                        if(surfaceId>=0)
+                        {
+                            context.putImageData(surfaceImages[surfaceId].imageData, pointX,pointY);
+                        }
+                        else{
+                            context.putImageData(surfaceImages[0].imageData, 0, 0);
+                        }
+                        fram++;
+                        playupdate();
+                    },wait);
+                }
+                else{
+                    clearTimeout(timer);
+                    fram=0;
+                }
+            };
+            clearTimeout(timer);
+            fram=0;
+            playupdate();
+            var rand=0;
+            if(interval=='sometimes')
+            {
+                rand=2;
+            }
+            if(interval=='rarely')
+            {
+                rand=4;
+            }
+            if(interval=='always')
+            {
+                rand=1;
+            }
+            if(rand!=0)
+            {
+                setInterval(function(){
+                    if(Math.floor(Math.random()*rand)==0)
+                    {
+                        clearTimeout(timer);
+                        fram=0;
+                        playupdate();
+                    }
+                },1000);
+            }
+        }
+        play(0);
+    }
+});
+  </script>
+</html>
